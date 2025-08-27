@@ -1,76 +1,82 @@
+cmake_minimum_required(VERSION 2.8)
+project(pcmd)
 
-add_definitions(
-    -DANONYMOUSUNIONS
-    -D_DEBUG_MEM)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_VERBOSE_MAKEFILE ON)
 
-include_directories(${REACTOS_SOURCE_DIR}/include/reactos/wine)
+include_directories(
+    ../include
+    ${CMAKE_CURRENT_SOURCE_DIR}
+)
 
-list(APPEND SOURCE
-    alias.c
-    assoc.c
-    attrib.c
-    batch.c
-    beep.c
-    call.c
-    chcp.c
-    choice.c
-    cls.c
-    cmd.c
-    cmddbg.c
-    cmdinput.c
-    cmdtable.c
-    color.c
-    console.c
-    copy.c
-    date.c
-    del.c
-    delay.c
-    dir.c
-    dirstack.c
-    echo.c
-    error.c
-    filecomp.c
-    for.c
-    free.c
-    goto.c
-    history.c
-    if.c
-    internal.c
-    label.c
-    locale.c
+set(SOURCES
     memory.c
-    misc.c
-    mklink.c
-    move.c
-    msgbox.c
-    parser.c
-    path.c
-    pause.c
-    prompt.c
-    redir.c
-    ren.c
-    replace.c
+    beep.c
+    cmdinput.c
     screen.c
-    set.c
-    setlocal.c
-    shift.c
-    start.c
-    strtoclr.c
-    time.c
-    timer.c
-    title.c
     type.c
-    ver.c
-    verify.c
-    vol.c
+    replace.c
+    timer.c
+    cls.c
+    echo.c
+    time.c
     where.c
+    misc.c
+    prompt.c
+    alias.c
+    cmddbg.c
+    strtoclr.c
+    free.c
+    console.c
+    if.c
+    goto.c
+    ver.c
+    attrib.c
+    for.c
+    error.c
+    start.c
+    history.c
+    dir.c
+    filecomp.c
+    chcp.c
+    batch.c
+    ren.c
+    delay.c
+    dirstack.c
+    setlocal.c
+    label.c
+    redir.c
+    mklink.c
+    vol.c
     window.c
-    precomp.h)
+    del.c
+    date.c
+    title.c
+    set.c
+    cmdtable.c
+    msgbox.c
+    verify.c
+    call.c
+    path.c
+    choice.c
+    internal.c
+    copy.c
+    cmd.c
+    move.c
+    assoc.c
+    parser.c
+    pause.c
+    color.c
+    main.c
+    locale.c
+    shift.c
+)
 
-add_rc_deps(cmd.rc ${CMAKE_CURRENT_SOURCE_DIR}/res/terminal.ico)
-add_executable(cmd ${SOURCE} cmd.rc)
-target_link_libraries(cmd wine)
-set_module_type(cmd win32cui UNICODE)
-add_importlibs(cmd advapi32 user32 msvcrt kernel32 ntdll)
-add_pch(cmd precomp.h SOURCE)
-add_cd_file(TARGET cmd DESTINATION reactos/system32 FOR all)
+if(WIN32)
+    add_definitions(-DWIN32)
+endif(WIN32)
+
+add_executable(pcmd ${SOURCES})
+target_link_libraries(pcmd user32 shell32)
+
+install(TARGETS pcmd DESTINATION bin)
