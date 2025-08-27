@@ -142,7 +142,7 @@
  */
 
 #include "precomp.h"
-#include <winternl.h> 
+#include <winternl.h>
 #include "buildno.h"
 
 #ifndef NT_SUCCESS
@@ -163,7 +163,7 @@ BOOL bUnicodeOutput = FALSE;
 BOOL bDisableBatchEcho = FALSE;
 BOOL bDelayedExpansion = FALSE;
 DWORD dwChildProcessId = 0;
-OSVERSIONINFO osvi;
+extern OSVERSIONINFO osvi;
 HANDLE hIn;
 HANDLE hOut;
 LPTSTR lpOriginalEnvironment;
@@ -529,7 +529,7 @@ DoCommand(LPTSTR first, LPTSTR rest, PARSED_COMMAND *Cmd)
 
 #ifdef CMD_CUSTOM_PLUGINS
 	/* Check if it is a custom command */
-	if (pCustomCommand) 
+	if (pCustomCommand)
 	{
 		ret = pCustomCommand(first,rest);
 		if (ret >= 0)			/* return -1 if it is no custom command */
