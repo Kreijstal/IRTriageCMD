@@ -45,14 +45,14 @@ PrintAttribute (LPTSTR pszPath, LPTSTR pszFile, BOOL bRecurse)
     LPTSTR pszFileName;
 
     /* prepare full file name buffer */
-    _tcscpy (szFullName, pszPath);
+    StringCchCopyW (szFullName, MAX_PATH, pszPath);
     pszFileName = szFullName + _tcslen (szFullName);
 
     /* display all subdirectories */
     if (bRecurse)
     {
         /* append file name */
-        _tcscpy (pszFileName, pszFile);
+        StringCchCopyW (pszFileName, MAX_PATH - (pszFileName - szFullName), pszFile);
 
         hFind = FindFirstFile (szFullName, &findData);
         if (hFind == INVALID_HANDLE_VALUE)
@@ -70,8 +70,8 @@ PrintAttribute (LPTSTR pszPath, LPTSTR pszFile, BOOL bRecurse)
                 !_tcscmp (findData.cFileName, _T("..")))
                 continue;
 
-            _tcscpy (pszFileName, findData.cFileName);
-            _tcscat (pszFileName, _T("\\"));
+            StringCchCopyW (pszFileName, MAX_PATH - (pszFileName - szFullName), findData.cFileName);
+            StringCchCatW (pszFileName, MAX_PATH - (pszFileName - szFullName), _T("\\"));
             PrintAttribute (szFullName, pszFile, bRecurse);
         }
         while (FindNextFile (hFind, &findData));
@@ -79,7 +79,7 @@ PrintAttribute (LPTSTR pszPath, LPTSTR pszFile, BOOL bRecurse)
     }
 
     /* append file name */
-    _tcscpy (pszFileName, pszFile);
+    StringCchCopyW (pszFileName, MAX_PATH - (pszFileName - szFullName), pszFile);
 
     /* display current directory */
     hFind = FindFirstFile (szFullName, &findData);
@@ -94,9 +94,9 @@ PrintAttribute (LPTSTR pszPath, LPTSTR pszFile, BOOL bRecurse)
         if (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
             continue;
 
-        _tcscpy (pszFileName, findData.cFileName);
+        StringCchCopyW (pszFileName, MAX_PATH - (pszFileName - szFullName), findData.cFileName);
 
-        ConOutPrintf(_T("%c  %c%c%c     %s\n"),
+        wprintf(L"%c  %c%c%c     %s\n",
                      (findData.dwFileAttributes & FILE_ATTRIBUTE_ARCHIVE) ? _T('A') : _T(' '),
                      (findData.dwFileAttributes & FILE_ATTRIBUTE_SYSTEM) ? _T('S') : _T(' '),
                      (findData.dwFileAttributes & FILE_ATTRIBUTE_HIDDEN) ? _T('H') : _T(' '),
@@ -120,14 +120,14 @@ ChangeAttribute(LPTSTR pszPath, LPTSTR pszFile, DWORD dwMask,
 
 
     /* prepare full file name buffer */
-    _tcscpy (szFullName, pszPath);
+    StringCchCopyW (szFullName, MAX_PATH, pszPath);
     pszFileName = szFullName + _tcslen (szFullName);
 
     /* change all subdirectories */
     if (bRecurse)
     {
         /* append file name */
-        _tcscpy (pszFileName, _T("*.*"));
+        StringCchCopyW (pszFileName, MAX_PATH - (pszFileName - szFullName), _T("*.*"));
 
         hFind = FindFirstFile (szFullName, &findData);
         if (hFind == INVALID_HANDLE_VALUE)
@@ -145,8 +145,8 @@ ChangeAttribute(LPTSTR pszPath, LPTSTR pszFile, DWORD dwMask,
                     !_tcscmp (findData.cFileName, _T("..")))
                     continue;
 
-                _tcscpy (pszFileName, findData.cFileName);
-                _tcscat (pszFileName, _T("\\"));
+                StringCchCopyW (pszFileName, MAX_PATH - (pszFileName - szFullName), findData.cFileName);
+                StringCchCatW (pszFileName, MAX_PATH - (pszFileName - szFullName), _T("\\"));
 
                 ChangeAttribute (szFullName, pszFile, dwMask,
                                  dwAttrib, bRecurse, bDirectories);
@@ -157,7 +157,7 @@ ChangeAttribute(LPTSTR pszPath, LPTSTR pszFile, DWORD dwMask,
     }
 
     /* append file name */
-    _tcscpy (pszFileName, pszFile);
+    StringCchCopyW (pszFileName, MAX_PATH - (pszFileName - szFullName), pszFile);
 
     hFind = FindFirstFile (szFullName, &findData);
     if (hFind == INVALID_HANDLE_VALUE)
@@ -172,7 +172,7 @@ ChangeAttribute(LPTSTR pszPath, LPTSTR pszFile, DWORD dwMask,
         if (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
             continue;
 
-        _tcscpy (pszFileName, findData.cFileName);
+        StringCchCopyW (pszFileName, MAX_PATH - (pszFileName - szFullName), findData.cFileName);
 
         dwAttribute = GetFileAttributes (szFullName);
 
@@ -205,7 +205,7 @@ INT CommandAttrib (LPTSTR param)
     /* print help */
     if (!_tcsncmp (param, _T("/?"), 2))
     {
-        ConOutResPaging(TRUE,STRING_ATTRIB_HELP);
+        wprintf(L"Displays or changes file attributes.\n\nATTRIB [+R | -R] [+A | -A] [+S | -S] [+H | -H] [drive:][path][filename] [/S [/D]]\n\n  +   Sets an attribute.\n  -   Clears an attribute.\n  R   Read-only file attribute.\n  A   Archive file attribute.\n  S   System file attribute.\n  H   Hidden file attribute.\n  [drive:][path][filename]\n      Specifies a file or files for attrib to process.\n  /S  Processes files in all directories in the specified path.\n  /D  Processes directories as well.\n");
         return 0;
     }
 
@@ -312,7 +312,7 @@ INT CommandAttrib (LPTSTR param)
             szPath[len] = _T('\\');
             szPath[len + 1] = 0;
         }
-        _tcscpy (szFileName, _T("*.*"));
+        StringCchCopyW (szFileName, MAX_PATH, _T("*.*"));
         PrintAttribute (szPath, szFileName, bRecurse);
         freep (arg);
         return 0;
@@ -326,7 +326,7 @@ INT CommandAttrib (LPTSTR param)
             LPTSTR p;
             GetFullPathName (arg[i], MAX_PATH, szPath, NULL);
             p = _tcsrchr (szPath, _T('\\')) + 1;
-            _tcscpy (szFileName, p);
+            StringCchCopyW (szFileName, MAX_PATH, p);
             *p = _T('\0');
 
             if (dwMask == 0)

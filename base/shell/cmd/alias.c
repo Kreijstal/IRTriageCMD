@@ -74,7 +74,7 @@ PrintAlias (VOID)
     {
         while (*Aliases != '\0')
         {
-            ConOutPrintf(_T("%s\n"), Aliases);
+            wprintf(L"%s\n", Aliases);
             Aliases = Aliases + lstrlen(Aliases);
             Aliases++;
         }

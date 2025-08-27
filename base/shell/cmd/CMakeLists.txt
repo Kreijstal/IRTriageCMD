@@ -1,10 +1,17 @@
+cmake_minimum_required(VERSION 3.16)
+project(cmd)
+
+# Enable resource compilation for .rc files
+ENABLE_LANGUAGE(RC)
 
 add_definitions(
     -DANONYMOUSUNIONS
     -D_DEBUG_MEM)
 
-include_directories(${REACTOS_SOURCE_DIR}/sdk/include/reactos/wine)
-include_directories(${REACTOS_SOURCE_DIR}/sdk/lib/conutils)
+# The include directories for ReactOS are not available in a standalone build.
+# We will rely on the system headers and local project headers.
+# include_directories(${REACTOS_SOURCE_DIR}/sdk/include/reactos/wine)
+# include_directories(${REACTOS_SOURCE_DIR}/sdk/lib/conutils)
 
 list(APPEND SOURCE
     alias.c
@@ -68,11 +75,18 @@ list(APPEND SOURCE
     window.c
     precomp.h)
 
-add_rc_deps(cmd.rc ${CMAKE_CURRENT_SOURCE_DIR}/res/terminal.ico)
+# Add the executable target, including the resource file
 add_executable(cmd ${SOURCE} cmd.rc)
-add_pch(cmd precomp.h SOURCE)
-set_module_type(cmd win32cui UNICODE)
-target_link_libraries(cmd wine)
-target_link_libraries(cmd conutils ${PSEH_LIB})
-add_importlibs(cmd advapi32 user32 msvcrt kernel32 ntdll)
-add_cd_file(TARGET cmd DESTINATION reactos/system32 FOR all)
+
+# Add the current source directory to the include path for config.h
+target_include_directories(cmd PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+
+# Use modern CMake for precompiled headers
+target_precompile_headers(cmd PRIVATE precomp.h)
+
+# Set properties for a Win32 console application and define UNICODE
+set_target_properties(cmd PROPERTIES WIN32_EXECUTABLE OFF)
+target_compile_definitions(cmd PRIVATE UNICODE _UNICODE)
+
+# Link against standard Windows libraries
+target_link_libraries(cmd advapi32 user32 kernel32 ntdll)

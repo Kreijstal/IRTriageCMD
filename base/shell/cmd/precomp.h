@@ -1,46 +1,44 @@
 #ifndef __CMD_PRECOMP_H
 #define __CMD_PRECOMP_H
 
-#ifdef _MSC_VER
-#pragma warning ( disable : 4103 ) /* use #pragma pack to change alignment */
-#undef _CRT_SECURE_NO_DEPRECATE
-#define _CRT_SECURE_NO_DEPRECATE
-#endif /*_MSC_VER */
+// Include our compatibility layer first
+#include "compat.h"
+#include "ndk_compat.h"
 
+// Standard C headers
 #include <stdio.h>
-#include <stdarg.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <malloc.h>
-#include <tchar.h>
 
-#define WIN32_NO_STATUS
-#include <windef.h>
-#include <winbase.h>
-#include <winnls.h>
-#include <winreg.h>
-#include <winuser.h>
-#include <wincon.h>
+// tchar.h is not available in this environment.
+// We are compiling for UNICODE, so we will rely on wchar.h and windows.h
+// #include <tchar.h>
+
+// All necessary headers are now included via compat.h and ndk_compat.h
+
+// Include shell API for functions like ShellExecute
 #include <shellapi.h>
 
-#define NTOS_MODE_USER
-#include <ndk/rtlfuncs.h>
-
+// String safe functions
 #include <strsafe.h>
 
-#include <conutils.h>
+// Include our compatibility layer for ReactOS conutils
+#include "conutils_compat.h"
 
+// Project-specific headers
 #include "resource.h"
-
 #include "cmd.h"
 #include "config.h"
 #include "batch.h"
 
-#include <wine/debug.h>
-WINE_DEFAULT_DEBUG_CHANNEL(cmd);
+// The original file had Wine debugging macros.
+// We are removing them for a standalone build.
+// If debug output is needed, use DbgPrint which maps to printf.
 #ifdef UNICODE
-#define debugstr_aw debugstr_w
+#define debugstr_aw(str)
 #else
-#define debugstr_aw debugstr_a
+#define debugstr_aw(str)
 #endif
 
 #endif /* __CMD_PRECOMP_H */
