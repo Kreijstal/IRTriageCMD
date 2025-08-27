@@ -251,8 +251,8 @@ INT Batch (LPTSTR fullname, LPTSTR firstword, LPTSTR param, PARSED_COMMAND *Cmd)
         if (_tcsicmp(bc->BatchFilePath,fpname)==0)
             same_fn=TRUE;
     }
-    TRACE ("Batch: (\'%s\', \'%s\', \'%s\')  same_fn = %d\n",
-        debugstr_aw(fullname), debugstr_aw(firstword), debugstr_aw(param), same_fn);
+    /* TRACE ("Batch: (\'%s\', \'%s\', \'%s\')  same_fn = %d\n",
+        debugstr_aw(fullname), debugstr_aw(firstword), debugstr_aw(param), same_fn); */
 
     if (!same_fn)
     {
@@ -262,7 +262,7 @@ INT Batch (LPTSTR fullname, LPTSTR firstword, LPTSTR param, PARSED_COMMAND *Cmd)
 
         if (hFile == INVALID_HANDLE_VALUE)
         {
-            ConErrResPuts(STRING_BATCH_ERROR);
+            fwprintf(stderr, L"Error opening batch file\n");
             return 1;
         }
     }
@@ -463,10 +463,10 @@ LPTSTR ReadBatchLine ()
         return NULL;
     }
 
-    TRACE ("ReadBatchLine(): textline: \'%s\'\n", debugstr_aw(textline));
+    /* TRACE ("ReadBatchLine(): textline: \'%s\'\n", debugstr_aw(textline)); */
 
     if (textline[_tcslen(textline) - 1] != _T('\n'))
-        _tcscat(textline, _T("\n"));
+        StringCchCatW(textline, BATCH_BUFFSIZE, L"\n");
 
     return textline;
 }
