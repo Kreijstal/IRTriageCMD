@@ -421,7 +421,7 @@ BOOL ReadCommand(LPTSTR str, INT maxlen)
                 current = charcount = 0;
 
                 /* Everything is deleted, lets add it back in */
-                _tcscpy(str,szPath);
+                StringCchCopyW(str, maxlen, szPath);
 
                 /* Figure out where cusor is going to be after we print it */
                 charcount = _tcslen(str);

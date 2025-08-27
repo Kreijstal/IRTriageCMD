@@ -1,20 +1,12 @@
 /*
- *  CHOICE.C - internal command.
+ *  CHOICE - choice internal command
  *
+ *  History
  *
- *  History:
+ *    16-Nov-2004 (Created by ???)
  *
- *    12 Aug 1999 (Eric Kohl)
- *        started.
- *
- *    01 Sep 1999 (Eric Kohl)
- *        Fixed help text.
- *
- *    26 Sep 1999 (Paolo Pantaleo)
- *        Fixed timeout.
- *
- *    02 Apr 2005 (Magnus Olsen)
- *        Remove hardcoded strings so that they can be translated.
+ *    02-Apr-2005 (Magnus Olsen <magnus@greatlord.com>)
+ *        Remove all hardcoded strings in En.rc
  *
  */
 
@@ -22,290 +14,161 @@
 
 #ifdef INCLUDE_CMD_CHOICE
 
+#define IS_SWITCH(c) ((c) == '/' || (c) == '-')
+#define TIME_OUT_EL 255
 
-#define GC_TIMEOUT  -1
-#define GC_NOKEY    0   //an event occurred but it wasn't a key pressed
-#define GC_KEYREAD  1   //a key has been read
-
-
-static INT
-GetCharacterTimeout (LPTCH ch, DWORD dwMilliseconds)
+static TCHAR get_choice(LPTSTR lpAllowed, BOOL bCase)
 {
-//--------------------------------------------
-//  Get a character from standard input but with a timeout.
-//  The function will wait a limited amount
-//  of time, then the function returns GC_TIMEOUT.
-//
-//  dwMilliseconds is the timeout value, that can
-//  be set to INFINITE, so the function works like
-//  stdio.h's getchar()
+    TCHAR  str[2];
+    TCHAR *p;
+    DWORD read;
 
-    HANDLE hInput;
-    DWORD  dwRead;
-
-    INPUT_RECORD lpBuffer;
-
-    hInput = GetStdHandle (STD_INPUT_HANDLE);
-
-    //if the timeout expired return GC_TIMEOUT
-    if (WaitForSingleObject (hInput, dwMilliseconds) == WAIT_TIMEOUT)
-        return GC_TIMEOUT;
-
-    //otherwise get the event
-    ReadConsoleInput (hInput, &lpBuffer, 1, &dwRead);
-
-    //if the event is a key pressed
-    if ((lpBuffer.EventType == KEY_EVENT) &&
-        (lpBuffer.Event.KeyEvent.bKeyDown != FALSE))
+    str[1] = 0;
+    for (;;)
     {
-        //read the key
-#ifdef _UNICODE
-        *ch = lpBuffer.Event.KeyEvent.uChar.UnicodeChar;
-#else
-        *ch = lpBuffer.Event.KeyEvent.uChar.AsciiChar;
-#endif
-        return GC_KEYREAD;
-    }
-
-    //else return no key
-    return GC_NOKEY;
-}
-
-static INT
-IsKeyInString (LPTSTR lpString, TCHAR cKey, BOOL bCaseSensitive)
-{
-    LPTCH p = lpString;
-    INT val = 0;
-
-    while (*p)
-    {
-        if (bCaseSensitive)
+        if (ReadConsole(GetStdHandle(STD_INPUT_HANDLE), str, 1, &read, NULL) && read)
         {
-            if (*p == cKey)
-                return val;
+            for (p = lpAllowed; *p; p++)
+            {
+                if (bCase)
+                {
+                    if (*p == *str)
+                        return *p;
+                }
+                else
+                {
+                    if (_totupper(*p) == _totupper(*str))
+                        return *str;
+                }
+            }
         }
-        else
-        {
-            if (_totlower (*p) == _totlower (cKey))
-                return val;
-        }
-
-        val++;
-        p++;
     }
-
-    return -1;
 }
 
 
-INT
-CommandChoice (LPTSTR param)
+INT CommandChoice(LPTSTR param)
 {
-    LPTSTR lpOptions;
-    TCHAR Options[6];
-    LPTSTR lpText    = NULL;
-    BOOL   bNoPrompt = FALSE;
-    BOOL   bCaseSensitive = FALSE;
-    BOOL   bTimeout = FALSE;
-    INT    nTimeout = 0;
-    TCHAR  cDefault = _T('\0');
-    INPUT_RECORD ir;
-    LPTSTR p, np;
-    LPTSTR *arg;
-    INT    argc;
-    INT    i;
-    INT    val;
+    LPTSTR  *arg;
+    INT     argc, i;
+    TCHAR   *s, *lpText;
+    TCHAR   *lpAllowed = _T("YN");
+    TCHAR   *lpDefault = NULL;
+    BOOL    bCase = FALSE;
+    BOOL    bShowN = FALSE;
+    BOOL    bTimeout = FALSE;
+    UINT    nTimeout = 0;
+    DWORD   start, left, dw;
 
-    INT GCret;
-    TCHAR Ch;
-    DWORD amount,clk;
-
-    LoadString(CMD_ModuleHandle, STRING_CHOICE_OPTION, Options, 4);
-    lpOptions = Options;
-
-    if (_tcsncmp (param, _T("/?"), 2) == 0)
+    /* print help */
+    if (param && !_tcsncmp(param, _T("/?"), 2))
     {
-        ConOutResPaging(TRUE,STRING_CHOICE_HELP);
+        wprintf(L"CHOICE [/C choices] [/N] [/S] [/T timeout /D choice] [text]\n\n"
+                L"  /C[:]choices  Specifies allowable keys. Default is YN\n"
+                L"  /N            Hides the key list in the prompt\n"
+                L"  /S            Causes the choice to be case-sensitive\n"
+                L"  /T[:]c,nn     Times out in nn seconds, default is c\n"
+                L"  text          The prompt string\n");
         return 0;
     }
 
-    /* retrieve text */
-    p = param;
-
-    while (TRUE)
-    {
-        if (*p == _T('\0'))
-            break;
-
-        if (*p != _T('/'))
-        {
-            lpText = p;
-                break;
-        }
-        np = _tcschr (p, _T(' '));
-        if (!np)
-            break;
-        p = np + 1;
-    }
+    nErrorLevel = 0;
 
     /* build parameter array */
-    arg = split (param, &argc, FALSE, FALSE);
+    arg = split(param, &argc, TRUE, TRUE);
 
-    /* evaluate arguments */
-    if (argc > 0)
+    for (i = 0; i < argc; i++)
     {
-        for (i = 0; i < argc; i++)
+        if (IS_SWITCH(arg[i][0]))
         {
-            if (_tcsnicmp (arg[i], _T("/c"), 2) == 0)
-            {
-                if (arg[i][2] == _T(':'))
-                    lpOptions = &arg[i][3];
-                else
-                    lpOptions = &arg[i][2];
-
-                if (_tcslen (lpOptions) == 0)
-                {
-                    ConErrResPuts(STRING_CHOICE_ERROR);
-                    freep (arg);
-                    return 1;
-                }
-            }
-            else if (_tcsnicmp (arg[i], _T("/n"), 2) == 0)
-            {
-                bNoPrompt = TRUE;
-            }
-            else if (_tcsnicmp (arg[i], _T("/s"), 2) == 0)
-            {
-                bCaseSensitive = TRUE;
-            }
-            else if (_tcsnicmp (arg[i], _T("/t"), 2) == 0)
-            {
-                LPTSTR s;
-
-                if (arg[i][2] == _T(':'))
-                {
-                    cDefault = arg[i][3];
-                    s = &arg[i][4];
-                }
-                else
-                {
-                    cDefault = arg[i][2];
-                    s = &arg[i][3];
-                }
-
-                if (*s != _T(','))
-                {
-                    ConErrResPuts(STRING_CHOICE_ERROR_TXT);
-                    freep (arg);
-                    return 1;
-                }
-
+            s = arg[i] + 1;
+            if (*(s - 1) == '-')
+                s[-1] = '/';
+            if (s[1] == ':')
                 s++;
-                nTimeout = _ttoi(s);
-                bTimeout = TRUE;
-            }
-            else if (arg[i][0] == _T('/'))
+            switch (_totupper(*s++))
             {
-                ConErrResPrintf(STRING_CHOICE_ERROR_OPTION, arg[i]);
-                freep (arg);
-                return 1;
+                case 'C':
+                    if (*s)
+                        lpAllowed = s;
+                    else
+                    {
+                        fwprintf(stderr, L"Invalid option. Expected format: /C[:]options\n");
+                        return 1;
+                    }
+                    break;
+                case 'N':
+                    bShowN = TRUE;
+                    break;
+                case 'S':
+                    bCase = TRUE;
+                    break;
+                case 'T':
+                    if (*s)
+                    {
+                        lpDefault = s++;
+                        if (*s == ',')
+                            s++;
+                        else
+                        {
+                            fwprintf(stderr, L"Invalid option. Expected format: /T[:]c,nn\n");
+                            return 1;
+                        }
+                        if (*s)
+                        {
+                            bTimeout = TRUE;
+                            nTimeout = _ttoi(s);
+                        }
+                    }
+                    break;
+                default:
+                    fwprintf(stderr, L"Illegal Option: %s\n", arg[i]);
+                    return 1;
             }
         }
     }
 
-    /* print text */
-    if (lpText)
-        ConOutPrintf (_T("%s"), lpText);
-
-    /* print options */
-    if (bNoPrompt == FALSE)
+    if (argc > i)
     {
-        ConOutPrintf (_T("[%c"), lpOptions[0]);
-
-        for (i = 1; (unsigned)i < _tcslen (lpOptions); i++)
-            ConOutPrintf (_T(",%c"), lpOptions[i]);
-
-        ConOutPrintf (_T("]?"));
+        lpText = arg[i];
     }
+    else
+        lpText = _T("");
 
-    ConInFlush ();
+    wprintf(L"%s", lpText);
+    if (!bShowN)
+    {
+        wprintf(L" [%s]?", lpAllowed);
+    }
 
     if (!bTimeout)
     {
-        while (TRUE)
-        {
-            ConInKey (&ir);
-
-            val = IsKeyInString (lpOptions,
-#ifdef _UNICODE
-                                 ir.Event.KeyEvent.uChar.UnicodeChar,
-#else
-                                 ir.Event.KeyEvent.uChar.AsciiChar,
-#endif
-                                 bCaseSensitive);
-
-            if (val >= 0)
-            {
-                ConOutPrintf (_T("%c\n"), lpOptions[val]);
-
-                nErrorLevel = val + 1;
-
-                break;
-            }
-
-            Beep (440, 50);
-        }
-
-        freep (arg);
-        TRACE ("ErrorLevel: %d\n", nErrorLevel);
-        return 0;
+        nErrorLevel = _tcschr(lpAllowed, get_choice(lpAllowed, bCase)) - lpAllowed + 1;
     }
-
-    clk = GetTickCount ();
-    amount = nTimeout*1000;
-
-loop:
-    GCret = GetCharacterTimeout (&Ch, amount - (GetTickCount () - clk));
-
-    switch (GCret)
+    else
     {
-        case GC_TIMEOUT:
-            TRACE ("GC_TIMEOUT\n");
-            TRACE ("elapsed %d msecs\n", GetTickCount () - clk);
-            break;
-
-        case GC_NOKEY:
-            TRACE ("GC_NOKEY\n");
-            TRACE ("elapsed %d msecs\n", GetTickCount () - clk);
-            goto loop;
-
-        case GC_KEYREAD:
-            TRACE ("GC_KEYREAD\n");
-            TRACE ("elapsed %d msecs\n", GetTickCount () - clk);
-            TRACE ("read %c", Ch);
-            if ((val=IsKeyInString(lpOptions,Ch,bCaseSensitive))==-1)
+        start = GetTickCount();
+        for (;;)
+        {
+            left = nTimeout * 1000 - (GetTickCount() - start);
+            if (left <= 0)
+                break;
+            if (WaitForSingleObject(GetStdHandle(STD_INPUT_HANDLE), 100) == WAIT_OBJECT_0)
             {
-                Beep (440, 50);
-                goto loop;
+                dw = 0;
+                GetNumberOfConsoleInputEvents(GetStdHandle(STD_INPUT_HANDLE), &dw);
+                if (dw > 1)
+                {
+                    nErrorLevel = _tcschr(lpAllowed, get_choice(lpAllowed, bCase)) - lpAllowed + 1;
+                    goto end;
+                }
             }
-            cDefault=Ch;
-            break;
+        }
+        nErrorLevel = TIME_OUT_EL;
+        wprintf(L"%c", *lpDefault);
     }
-
-    TRACE ("exiting wait loop after %d msecs\n",
-                GetTickCount () - clk);
-
-    val = IsKeyInString (lpOptions, cDefault, bCaseSensitive);
-    ConOutPrintf(_T("%c\n"), lpOptions[val]);
-
-    nErrorLevel = val + 1;
-
-    freep (arg);
-
-    TRACE ("ErrorLevel: %d\n", nErrorLevel);
-
-    return 0;
+  end:
+    wprintf(L"\n");
+    return nErrorLevel;
 }
-#endif /* INCLUDE_CMD_CHOICE */
 
-/* EOF */
+#endif /* INCLUDE_CMD_CHOICE */

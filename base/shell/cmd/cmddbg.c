@@ -214,7 +214,7 @@ cmd_dup_dbg(const TCHAR *str, const char *file, int line)
         ptr = (TCHAR *)cmd_alloc_dbg((_tcslen(str) + 1) * sizeof(TCHAR), file, line);
         if (ptr != NULL)
         {
-            _tcscpy(ptr, str);
+            StringCchCopyW(ptr, _tcslen(str) + 1, str);
         }
     }
 

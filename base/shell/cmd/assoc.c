@@ -80,7 +80,7 @@ PrintAssociation(LPTSTR extension)
 
     if (fileTypeLength != 0)	/* if there is a default key, display relevant information */
     {
-        ConOutPrintf(_T("%s=%s\n"), extension, fileType);
+        wprintf(L"%s=%s\n", extension, fileType);
     }
 
     if (fileTypeLength)
@@ -249,7 +249,7 @@ INT CommandAssoc (LPTSTR param)
             INT retval = PrintAssociation(param);
 
             if (retval == 0)	/* if nothing printed out */
-                ConOutResPrintf(STRING_ASSOC_ERROR, param);
+                wprintf(L"File association not found for extension %s\n", param);
         }
     }
 

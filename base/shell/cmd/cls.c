@@ -1,45 +1,60 @@
 /*
- *  CLS.C - clear screen internal command.
+ *  CLS - cls internal command
  *
+ *  History
  *
- *  History:
+ *    19-Jan-1999 (Eric Kohl)
+ *        started
  *
- *    07/27/1998 (John P. Price)
- *        started.
- *
- *    27-Jul-1998 (John P Price <linux-guru@gcfl.net>)
- *        added config.h include
- *
- *    04-Dec-1998 (Eric Kohl)
- *        Changed to Win32 console app.
- *
- *    08-Dec-1998 (Eric Kohl)
- *        Added help text ("/?").
- *
- *    14-Jan-1998 (Eric Kohl)
- *        Unicode ready!
- *
- *    20-Jan-1998 (Eric Kohl)
- *        Redirection ready!
- *
- *    02-Apr-2005 (Magnus Olsen <magnus@greatlord.com>)
- *        Remove all hardcoded strings in En.rc
  */
 
 #include "precomp.h"
 
 #ifdef INCLUDE_CMD_CLS
 
+static void ClearScreen(void)
+{
+    HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+    CONSOLE_SCREEN_BUFFER_INFO csbi;
+    DWORD cCharsWritten;
+    DWORD dwConSize;
+    COORD coordScreen = { 0, 0 };
+
+    /* Get the number of character cells in the current buffer */
+    if (!GetConsoleScreenBufferInfo(hConsole, &csbi))
+        return;
+
+    dwConSize = csbi.dwSize.X * csbi.dwSize.Y;
+
+    /* Fill the entire screen with blanks */
+    if (!FillConsoleOutputCharacter(hConsole,
+                                    (TCHAR)' ',
+                                    dwConSize,
+                                    coordScreen,
+                                    &cCharsWritten))
+        return;
+
+    /* Get the current text attribute */
+    if (!GetConsoleScreenBufferInfo(hConsole, &csbi))
+        return;
+
+    /* Set the buffer's attributes accordingly */
+    if (!FillConsoleOutputAttribute(hConsole,
+                                    csbi.wAttributes,
+                                    dwConSize,
+                                    coordScreen,
+                                    &cCharsWritten))
+        return;
+
+    /* Put the cursor at its home coordinates */
+    SetConsoleCursorPosition(hConsole, coordScreen);
+}
+
+
 INT cmd_cls(LPTSTR param)
 {
-    if (!_tcsncmp(param, _T("/?"), 2))
-    {
-        ConOutResPaging(TRUE, STRING_CLS_HELP);
-        return 0;
-    }
-
-    ConClearScreen(&StdOutScreen);
+    ClearScreen();
     return 0;
 }
 
-#endif
+#endif /* INCLUDE_CMD_CLS */
