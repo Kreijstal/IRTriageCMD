@@ -85,7 +85,6 @@
  *        on or off. (marked with "JPP 19980708")
  *
  *    07-Dec-1998 (Eric Kohl)
- *        First ReactOS release.
  *        Extended length of commandline buffers to 512.
  *
  *    13-Dec-1998 (Eric Kohl)
@@ -112,9 +111,6 @@
  *
  *    28-Dec-1999 (Eric Kohl)
  *        Restore window title after program/batch execution
- *
- *    03-Feb-2001 (Eric Kohl)
- *        Workaround because argc[0] is NULL under ReactOS
  *
  *    23-Feb-2001 (Carl Nettelblad <cnettel@hem.passagen.se>)
  *        %envvar% replacement conflicted with for.
@@ -1780,10 +1776,7 @@ Initialize()
     if (!*ptr)
     {
         /* If neither /C or /K was given, display a simple version string */
-//        ConOutResPrintf(STRING_REACTOS_VERSION,
-//            _T(KERNEL_RELEASE_STR),
-//            _T(KERNEL_VERSION_BUILD_STR));
-        ConOutPuts(_T("(C) Copyright 1998-") _T(COPYRIGHT_YEAR) _T(" ReactOS Team.\n"));
+        ConOutPuts(_T("(C) Copyright 1998-") _T(COPYRIGHT_YEAR) _T(" The pcmd team.\n"));
 		ConOutPuts(_T("Perl/Cmd Script Executor ") _T(KERNEL_VERSION_BUILD_STR) _T(" http://www.atbas.org"));
         ConOutChar(_T('\n'));
      }
